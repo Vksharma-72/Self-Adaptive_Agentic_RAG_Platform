@@ -2,3 +2,4 @@ rag
 .env
 DATA/noisy_data
 DATA/true_data
+.gitignore
