@@ -6,18 +6,24 @@
 fastapi                     # High-performance web framework for the API
 uvicorn[standard]           # ASGI server to run the FastAPI app
 python-dotenv               # For loading configuration from .env files
+python-multipart            # Multipart form parsing for file uploads
 requests                    # HTTP library for internal/external API calls
-streamlit                   # Frontend dashboard for the chat interface
+streamlit                   # (Legacy) eval app only — production UI is the React frontend
 numpy                       # Numerical processing
 pytz                        # Timezone handling for logs
 nest-asyncio                # Support for nested async loops in notebooks/streamlit
+
+# --- PLATFORM: DATABASE & AUTH ---
+sqlalchemy                  # SQLite ORM for users, workspaces, documents
+pyjwt                       # JWT issuing/verification for login sessions
+bcrypt                      # Password hashing
 
 # --- GEMINI EMBEDDINGS ---
 google-generativeai         # Gemini API — embeddings (text-embedding-004 / gemini-embedding-001)
 langchain-google-genai      # LangChain integration for Gemini models
 
 # --- VECTOR DB & RETRIEVAL ---
-qdrant-client               # Vector Database for semantic search
+qdrant-client>=1.18         # Vector DB; >=1.18 required for TurboQuant quantization
 flashrank                   # Ultra-fast local cross-encoder for semantic reranking
 
 # --- LANGCHAIN & AGENTIC ORCHESTRATION ---
@@ -27,7 +33,7 @@ langchain-groq              # Integration for lightning-fast Llama 3.3 models
 langchain-google-vertexai   # Required shim for NeMo Guardrails internal import (no GCP credentials needed)
 langchain-community         # Community-contributed tools and loaders
 langchain-openai            # OpenAI-compatible layer (used by Portkey gateway)
-pydantic>=2.0.0             # Data validation and settings management
+pydantic[email]>=2.0.0      # Data validation and settings management (email-validator for EmailStr)
 
 # --- DATA INGESTION & DOCUMENT PARSING ---
 unstructured                # Base library for DOCX/PPTX partitioning

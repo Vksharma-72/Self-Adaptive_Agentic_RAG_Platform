@@ -19,7 +19,7 @@ def _probe_gemini():
     try: 
         model = GoogleGenerativeAIEmbeddings(
             model="models/gemini-embedding-2-preview",
-            google_api_ke=settings.GEMINI_API_KEY,
+            google_api_key=settings.GEMINI_API_KEY,
         )
         model.embed_query('probe')
         logfire.info("Gemini embeddings ready (gemini-embedding-2-preview, 3072-dim).")

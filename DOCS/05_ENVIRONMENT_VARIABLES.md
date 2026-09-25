@@ -70,3 +70,21 @@ The project uses a `.env` file for local development. All configuration is manag
 1.  **Never** commit your `.env` file to Git — it is in `.gitignore`.
 2.  Use `.env.example` as the template when onboarding new developers.
 3.  Keep `JUDGE_GROQ` on a separate key so eval workloads cannot rate-limit the live app.
+
+---
+
+## 🧩 Platform (Self-Adaptive RAG)
+
+| Variable | Description | Example |
+| :--- | :--- | :--- |
+| `JWT_SECRET` | Secret used to sign login JWTs. **Must** be changed in production. | `openssl rand -hex 32` |
+| `ADMIN_EMAIL` | Bootstrap admin account seeded on first startup | `admin@company.com` |
+| `ADMIN_PASSWORD` | Password for the bootstrap admin | strong password |
+| `DB_PATH` | SQLite database file for users/workspaces/documents | `platform.db` |
+| `UPLOADS_DIR` | Where uploaded documents are stored | `uploads` |
+| `FRONTEND_ORIGIN` | Allowed CORS origin for the React dev server | `http://localhost:5173` |
+
+Notes:
+- The admin account is created at startup only if the email doesn't exist; an existing account with that email is promoted to admin.
+- Registration via the UI always creates a `user` (non-admin) account.
+- The LLM gateway now uses Groq `openai/gpt-oss-120b` (primary) → `openai/gpt-oss-20b` (fallback); `GROQ_SLUG_2` may hold the literal placeholder `GROQ_SLUG` in older `.env` files — the gateway falls back through the primary virtual key in that case.

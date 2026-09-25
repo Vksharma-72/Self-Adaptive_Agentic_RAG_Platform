@@ -11,29 +11,55 @@ logfire.configure(token=os.getenv("LOGFIRE_TOKEN"))
 
 # Now safe to import app modules - logfire is already active
 from fastapi import FastAPI, Response
-from app.agents.graph import rag_agent
-from app.guardrails import initialize_rails, guard
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 
-from pydantic import BaseModel
-from typing import Optional
+from app.api.routes_chat import router as chat_router
+from app.api.routes_documents import router as documents_router
+from app.api.routes_optimization import router as optimization_router
+from app.api.routes_stats import router as stats_router
+from app.api.routes_users import router as users_router
+from app.api.routes_workspaces import router as workspaces_router
+from app.auth.routes import router as auth_router, seed_admin
+from app.config import settings
+from app.db.database import init_db
 
 
 # Initialize FastAPI
-app = FastAPI(title="Enterprise Agentic RAG API")
+app = FastAPI(title="Self-Adaptive Agentic RAG Platform")
 
 
 @app.on_event("startup")
 def startup_event():
-    initialize_rails()
+    init_db()
+    seed_admin()
 
-class QueryRequest(BaseModel):
-    q: str
-    thread_id: Optional[str] = "default_user"
-    
-    
+
+# CORS: the React dev server runs on FRONTEND_ORIGIN (Vite default :5173).
+# In production the built SPA is served by FastAPI itself, so CORS is moot there.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[settings.FRONTEND_ORIGIN],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+# --- API routers ---
+app.include_router(auth_router)
+app.include_router(workspaces_router)
+app.include_router(documents_router)
+app.include_router(users_router)
+app.include_router(optimization_router)
+app.include_router(stats_router)
+app.include_router(chat_router)
+
+
 @app.get("/")
 def home():
-    return {"message": "Enterprise LangGraph RAG API is live."}
+    return {"message": "Self-Adaptive Agentic RAG Platform API is live."}
 
 
 @app.get("/graph")
@@ -42,61 +68,30 @@ def get_graph_image():
     Returns the Mermaid image of the agent's workflow.
     """
     try:
-        png_bytes = rag_agent.get_graph().draw_mermaid_png()
+        png_bytes = rag_agent_png()
         return Response(content=png_bytes, media_type="image/png")
     except Exception as e:
         return {"error": f"Could not generate graph image: {e}"}
-    
-    
-@app.post("/query")
-def query(request: QueryRequest):
-    """
-    Executes the LangGraph RAG flow with memory using a POST request.
-    """
-    q = request.q
-    thread_id = request.thread_id
 
-    initial_state = {
-        "messages": [{"role": "user", "content": q}],
-        "current_query": q,
-        "documents": [],
-        "plan": ["Start"],
-        "status": "Initializing Graph..."
-    }
-    
-    # Configuration for Memory (Thread ID)
-    config = {"configurable": {"thread_id": thread_id}}
-    
-    try:
-        # Gate 1: NeMo Guardrails — blocks off-topic, jailbreaks, and handles dialog
-        rail_fired, rail_response = guard(q)
-        if rail_fired:
-            logfire.info(f"🛡️ Request blocked by guardrails | thread={thread_id}")
-            return {
-                "question": q,
-                "answer": rail_response,
-                "thought_process": ["Intent: Guardrails Fired", "Retrieval: Skipped"],
-                "status": "Blocked by guardrails.",
-                "sources": []
-            }
 
-        # Gate 2: LangGraph RAG pipeline
-        # Run the graph synchronously to preserve Logfire context variables
-        final_output = rag_agent.invoke(initial_state, config=config)
-        
-        return {
-            "question": q,
-            "answer": final_output.get("final_answer"),
-            "thought_process": final_output.get("plan"),
-            "status": final_output.get("status"),
-            "sources": final_output.get("documents", [])
-        }
-    except Exception as e:
-        logfire.error(f"❌ Backend Execution Failed: {e}")
-        return {
-            "question": q,
-            "answer": "I apologize, but I encountered an internal error while processing your request. Please try again later.",
-            "thought_process": ["Error encountered during execution."],
-            "status": "error",
-            "sources": []
-        }
+def rag_agent_png() -> bytes:
+    from app.agents.graph import rag_agent
+
+    return rag_agent.get_graph().draw_mermaid_png()
+
+
+# --- Production SPA serving (built React frontend) ---
+# `npm run build` outputs to frontend/dist; FastAPI serves it so a single
+# uvicorn process deploys the whole platform.
+FRONTEND_DIST = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "frontend", "dist")
+
+if os.path.isdir(FRONTEND_DIST):
+    app.mount("/assets", StaticFiles(directory=os.path.join(FRONTEND_DIST, "assets")), name="assets")
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    def spa_fallback(full_path: str):
+        """Serves built static files, falling back to index.html for client-side routes."""
+        candidate = os.path.join(FRONTEND_DIST, full_path)
+        if full_path and os.path.isfile(candidate):
+            return FileResponse(candidate)
+        return FileResponse(os.path.join(FRONTEND_DIST, "index.html"))

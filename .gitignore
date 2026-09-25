@@ -1,4 +1,19 @@
 rag
+venv
+__pycache__/
+*.pyc
 .env
 DATA/noisy_data
 DATA/true_data
+.claude
+
+# Platform runtime artifacts
+platform.db
+uploads/
+processed_data/
+platform.log
+.platform.pid
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
